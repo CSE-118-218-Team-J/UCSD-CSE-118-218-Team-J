@@ -141,6 +141,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         textView = findViewById(R.id.myTextView);
+        SensorManager mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BODY_SENSORS) != PackageManager.PERMISSION_GRANTED) {
             textView.setText(R.string.sensor_permission);
             ActivityCompat.requestPermissions(this,
