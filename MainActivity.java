@@ -139,9 +139,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         textView = findViewById(R.id.myTextView);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         SensorManager mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BODY_SENSORS) != PackageManager.PERMISSION_GRANTED) {
             textView.setText(R.string.sensor_permission);
             ActivityCompat.requestPermissions(this,
