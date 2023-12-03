@@ -16,4 +16,6 @@ def handle_vr_alert():
 	alert_status = request.json['decision']
 	return {"status": "Recieved"}
 
+if __name__ == '__main__':
+	app.run('localhost', port=4040)
 
