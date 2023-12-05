@@ -3,6 +3,8 @@ package com.example.lab5;
 import static androidx.core.content.ContextCompat.getSystemService;
 import static com.google.android.gms.wearable.DataMap.TAG;
 
+import static java.security.AccessController.getContext;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -12,7 +14,9 @@ import android.hardware.SensorEvent;
 import android.net.ConnectivityManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
+import android.view.WindowManager;
 import android.widget.TextView;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
@@ -47,8 +51,10 @@ class MySensorEventListener implements SensorEventListener {
     public void onSensorChanged(SensorEvent event) {
         textView.setText(R.string.changesensor);
         int heart_rate = 0;
+        Log.d("HR", "HERE2");
         if (event.sensor.getType() == Sensor.TYPE_HEART_RATE) {
             heart_rate = (int)event.values[0];
+            Log.d("HR", "HERE3");
         }
         String s = "heart rate: "+heart_rate;
         textView.setText(s);
@@ -61,9 +67,10 @@ class MySensorEventListener implements SensorEventListener {
 
 class keepPosting extends AsyncTask<Void, Void, Void> {
     public TextView hr;
-
-    public keepPosting(TextView HeartRate){
+    public String ID;
+    public keepPosting(TextView HeartRate, String id){
         this.hr = HeartRate;
+        this.ID = id;
     }
 
     @Override
@@ -71,7 +78,7 @@ class keepPosting extends AsyncTask<Void, Void, Void> {
         while(true){
             try {
                 Log.d("MY", "HERE1");
-                URL url = new URL("https://bonefish-boss-singularly.ngrok-free.app/hr");
+                URL url = new URL("https://bonefish-boss-singularly.ngrok-free.app/api/hr");
                 HttpURLConnection con = (HttpURLConnection) url.openConnection();
                 Log.d("MY", "HERE3");
                 // Set the request method to POST
@@ -88,6 +95,7 @@ class keepPosting extends AsyncTask<Void, Void, Void> {
 //                Thread.sleep(5000);
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("hr", this.hr.getText().toString());
+                jsonObject.put("ID", this.ID);
                 Log.d("MY", "HERE6");
                 //con.getOutputStream();
                 Log.d("MY", "test");
@@ -142,21 +150,23 @@ public class MainActivity extends AppCompatActivity {
         textView = findViewById(R.id.myTextView);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         SensorManager mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BODY_SENSORS) != PackageManager.PERMISSION_GRANTED) {
             textView.setText(R.string.sensor_permission);
+            Log.d("HR", "HERE1");
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.BODY_SENSORS}, 1);
         }
+        String id = Settings.Secure.getString(this.getContentResolver(), Settings.Secure.ANDROID_ID);
 
         String wait_sensor = "Waiting for data from sensor: " + SensorManager.SENSOR_STATUS_UNRELIABLE;
         textView.setText(wait_sensor);
-
+        Log.d("HR", "HERE5");
+        Log.d("MY", id);
         SensorEventListener sensorListener = new MySensorEventListener(getBaseContext(), textView);
-        //Sensor mHeartRateSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE);
+        Sensor mHeartRateSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE);
 
-        //mSensorManager.registerListener(sensorListener, mHeartRateSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        new keepPosting(textView).execute();
+        mSensorManager.registerListener(sensorListener, mHeartRateSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        new keepPosting(textView, id).execute();
     }
 }
 
