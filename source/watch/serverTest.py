@@ -4,9 +4,10 @@ app = Flask(__name__)
 
 #This is trigererd when the watch makes a post request to our server
 #It will send a json file with heart rate
-@app.route('/hr', methods=['POST'])
+@app.route('/api/hr', methods=['POST'])
 def handle_watch_hr():
 	hr = request.json["hr"]
+	id = request.json["ID"]
 	return {"status": "Recieved"}
 
 #This handler will be triggered when the VR POSTS the alert status
