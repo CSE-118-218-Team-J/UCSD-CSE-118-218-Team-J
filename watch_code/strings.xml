@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">watchVR</string>
+    <string name="changesensor">sensor changed</string>
+    <string name="sensor_placeholder">heart rate data will appear here</string>
+    <string name="sensor_permission">heart rate permission failed</string>
+    <string name="waiting">…</string>
+    <string name="hr">heart rate:</string>
+
+</resources>
