@@ -1,0 +1,3 @@
+Code for the watch
+
+Includes: heart rate sensor, post to server, vibration
