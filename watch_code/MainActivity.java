@@ -18,7 +18,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.hardware.SensorEventListener;
 import android.content.Context;
-import android.view.View;
 
 import android.os.Vibrator;
 
@@ -37,48 +36,48 @@ import java.net.ProtocolException;
 import java.net.URL;
 
 
-
 // class to handle sensor events
 class MySensorEventListener implements SensorEventListener {
     // variable to access application's context
     private Context context;
     // variable to display text in the app
-    private TextView hrtext;
+    private TextView hrText;
 
-    private RelativeLayout main_layout;
+    private RelativeLayout mainLayout;
+    // variable to create the vibrator
+    private Vibrator vibrator;
 
-    public MySensorEventListener(Context context, TextView heartrate, RelativeLayout main_layout) {
+    public MySensorEventListener(Context context, TextView heartrate, RelativeLayout mainLayout) {
         this.context = context;
-        this.hrtext = heartrate;
-        this.main_layout = main_layout;
+        this.hrText = heartrate;
+        this.mainLayout = mainLayout;
+        this.vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
         // update TextView to say that sensor data has changed
-        hrtext.setText(R.string.waiting);
-        int heart_rate = 0;
+        hrText.setText(R.string.waiting);
+        int heartRate = 0;
         // if the sensor is a heart rate sensor, retrieve the heart rate data
         if (event.sensor.getType() == Sensor.TYPE_HEART_RATE) {
-            heart_rate = (int) event.values[0];
-            Log.d("HR", "HERE3");
+            heartRate = (int) event.values[0];
+
         }
-
+        Log.d("HR", "HERE " + Variables.threshold);
         // if the heart rate surpasses a certain threshold, make the watch vibrate
-        int threshold = 90;
-
-        if (heart_rate > threshold) {
+        if (heartRate > Variables.threshold) {
             // vibration + change of background
             vibrateWatch();
         } else {
             // when it's below the threshold, return the background to black
-            main_layout.setBackgroundResource(R.color.black);
+            mainLayout.setBackgroundResource(R.color.black);
         }
 
         // display heart rate value
-        if (heart_rate != 0) {
-            String s = "" + heart_rate;
-            hrtext.setText(s);
+        if (heartRate != 0) {
+            String s = "" + heartRate;
+            hrText.setText(s);
         }
     }
 
@@ -89,66 +88,48 @@ class MySensorEventListener implements SensorEventListener {
 
     // function to make the watch vibrate and change the background color
     private void vibrateWatch() {
-        Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
         if (vibrator != null) {
             vibrator.vibrate(500);
         }
-        main_layout.setBackgroundResource(R.color.red);
+        mainLayout.setBackgroundResource(R.color.red);
     }
+
 }
 
 // custom AsyncTask class to perform background tasks (HTTP POST requests)
-class keepPosting extends AsyncTask<Void, Void, Void> {
+class serverConnection extends AsyncTask<Void, Void, Void> {
     public TextView hr;
     public String ID;
+    public String thresh;
 
-    public keepPosting(TextView HeartRate, String id){
+    public serverConnection(TextView HeartRate, String id){
         this.hr = HeartRate;
         this.ID = id;
     }
 
     @Override
     protected Void doInBackground(Void... voids) {
-        while(true){
+        while(!Variables.stopCondition){
             try {
-                // logs to check the correct functioning of the program
-                Log.d("MY", "HERE1"); //
-                // create a URL object for the server endpoint
                 URL url = new URL("https://bonefish-boss-singularly.ngrok-free.app/api/hr");
                 HttpURLConnection con = (HttpURLConnection) url.openConnection();
-                Log.d("MY", "HERE3"); //
-
-                /*watch -> server*/
-                // set the request method to POST
-                con.setRequestMethod("POST");
-                Log.d("MY", "HERE4"); //
-                // set the content type to indicate that you are sending JSON data
                 con.setRequestProperty("Content-Type", "application/json");
-                Log.d("MY", "HERE5"); //
-                // enable input and output streams
                 con.setDoInput(true);
                 con.setDoOutput(true);
                 con.setConnectTimeout(10000);
                 con.setReadTimeout(10000);
-//                Thread.sleep(5000);
-                // create a JSON object with the heart rate value
+
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("hr", this.hr.getText().toString());
                 jsonObject.put("ID", this.ID);
-                Log.d("MY", "HERE6"); //
-                //con.getOutputStream();
-                Log.d("MY", "test");
-                // write the JSON payload to the output stream
+
                 try (DataOutputStream wr = new DataOutputStream(con.getOutputStream())) {
                     // write the JSON payload to the output stream
                     Log.d("MY", "HERE7"); //
                     wr.writeBytes(String.valueOf(jsonObject));
                     wr.flush();
                 }
-                Log.d("MY", "HERE8"); //
 
-                /*server -> watch*/
-                // get the response code
                 int responseCode = con.getResponseCode();
                 Log.d(TAG, "Response Code: " + responseCode);
                 Log.d("MY", "HERE9"); //
@@ -167,7 +148,79 @@ class keepPosting extends AsyncTask<Void, Void, Void> {
                 }
                 // disconnect and wait for 5 seconds before the next iteration
                 con.disconnect();
-                Thread.sleep(5000);
+                Thread.sleep(1000);
+                Log.d("HR", "HERE IN askThreshold");
+                URL geturl = null;
+                try {
+                    geturl = new URL("https://bonefish-boss-singularly.ngrok-free.app/getThreshold");
+                } catch (MalformedURLException e) {
+                    throw new RuntimeException(e);
+                }
+                HttpURLConnection newcon = null;
+                try {
+                    newcon = (HttpURLConnection) geturl.openConnection();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                try {
+                    newcon.setRequestMethod("GET");
+                } catch (ProtocolException e) {
+                    throw new RuntimeException(e);
+                }
+                newcon.setReadTimeout(1000);
+                newcon.setConnectTimeout(5000);
+                newcon.setDoOutput(true);
+                try {
+                    newcon.connect();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+                BufferedReader br = null;
+                try {
+                    br = new BufferedReader(new InputStreamReader(geturl.openStream()));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                StringBuilder sb = new StringBuilder();
+
+                String str;
+                while (true) {
+                    try {
+                        if (!((str = br.readLine()) != null)) break;
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    sb.append(str + "\n");
+                }
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+                String jsonString = sb.toString();
+                Log.d("MY", "JSON " + jsonString);
+
+                JSONObject jobj = null;
+                try {
+                    jobj = new JSONObject((jsonString));
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+                try {
+                    this.thresh = (jobj.get("threshold").toString());
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+                newcon.disconnect();
+                Log.d("HR", "HERE IN GET REQUEST " + this.thresh);
+                Variables.threshold = Integer.parseInt(this.thresh);
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             } catch (MalformedURLException | ProtocolException | InterruptedException |
                      JSONException e) {
                 throw new RuntimeException(e);
@@ -176,13 +229,14 @@ class keepPosting extends AsyncTask<Void, Void, Void> {
                 throw new RuntimeException(e);
             }
         }
+        return null;
     }
 }
 public class MainActivity extends AppCompatActivity {
 
     TextView textView1;
-    TextView view_text;
-    TextView view_number;
+    TextView viewText;
+    TextView viewNumber;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -213,13 +267,29 @@ public class MainActivity extends AppCompatActivity {
         Log.d("MY", id);
         // create a sensor event listener
         //new MySensorEventListener(getBaseContext(), textView);
-        view_text = findViewById(R.id.text_down);
-        view_number = findViewById(R.id.text_up);
-        SensorEventListener sensorListener = new MySensorEventListener(getBaseContext(), view_text, main_layout);
+        viewText = findViewById(R.id.text_down);
+        viewNumber = findViewById(R.id.text_up);
+        SensorEventListener sensorListener = new MySensorEventListener(getBaseContext(), viewText, main_layout);
         Sensor mHeartRateSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE);
 
         mSensorManager.registerListener(sensorListener, mHeartRateSensor, SensorManager.SENSOR_DELAY_NORMAL);
         // start an AsyncTask for posting data to the server
-        new keepPosting(view_text, id).execute();
+        new serverConnection(viewText, id).execute();
+        Log.d("1", "BEFORE askThreshold");
+    }
+
+    @Override
+    protected void onPause(){
+        super.onPause();
+        Variables.stopCondition =true;
+    }
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+        // reset the condition for the server loops
+        Variables.stopCondition =false;
+        String id = Settings.Secure.getString(this.getContentResolver(), Settings.Secure.ANDROID_ID);
+        new serverConnection(viewText, id).execute();
     }
 }
