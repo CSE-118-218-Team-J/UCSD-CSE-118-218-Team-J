@@ -146,7 +146,7 @@ public class VideoPause : MonoBehaviour
                 PauseVideo();
             }
             else
-            {
+            { 
                 
                 Debug.Log("Response: " + webRequest.downloadHandler.text);
 
